@@ -261,6 +261,21 @@ class FileMessageSet private[kafka](@volatile var file: File,
   }
 
   /**
+    *
+    * @return
+    */
+  def toPayloadAppendedMessageFormat(): MessageSet = {
+    val offsets = new ArrayBuffer[Long]
+    val newMessages = new ArrayBuffer[Message]
+    this.foreach{messageAndOffset =>
+      val message = messageAndOffset.message
+      newMessages += message.appendTimestampToPayload()
+      offsets += messageAndOffset.offset
+    }
+    new ByteBufferMessageSet(newMessages: _*)
+  }
+
+  /**
    * Convert this message set to use the specified message format.
    */
   def toMessageFormat(toMagicValue: Byte): MessageSet = {

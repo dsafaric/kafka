@@ -19,6 +19,7 @@ package kafka.message
 
 import java.nio._
 
+import kafka.common.KafkaException
 import org.apache.kafka.common.record.TimestampType
 
 import scala.math._
@@ -189,7 +190,6 @@ class Message(val buffer: ByteBuffer,
     if(bytes != null)
       buffer.put(bytes, payloadOffset, size)
     buffer.rewind()
-
     // now compute the checksum and fill it in
     Utils.writeUnsignedInt(buffer, CrcOffset, computeChecksum)
   }
@@ -339,6 +339,18 @@ class Message(val buffer: ByteBuffer,
       convertToBuffer(toMagicValue, byteBuffer, Message.NoTimestamp)
       new Message(byteBuffer)
     }
+  }
+
+  /**
+    *
+    * @return
+    */
+  def appendTimestampToPayload(): Message = {
+    // Allocate size + currentTimeMillis: Long byte byte
+    val byteBuffer = ByteBuffer.allocate(size + 8)
+    byteBuffer.put(buffer)
+    byteBuffer.putLong(System.currentTimeMillis())
+    new Message(byteBuffer)
   }
 
   def convertToBuffer(toMagicValue: Byte,

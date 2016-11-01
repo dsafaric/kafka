@@ -30,7 +30,7 @@ import kafka.common._
 import kafka.controller.KafkaController
 import kafka.coordinator.{GroupCoordinator, JoinGroupResult}
 import kafka.log._
-import kafka.message.{ByteBufferMessageSet, Message, MessageSet}
+import kafka.message.{MessageAndOffset, ByteBufferMessageSet, Message, MessageSet}
 import kafka.network._
 import kafka.network.RequestChannel.{Response, Session}
 import kafka.security.auth
@@ -483,7 +483,18 @@ class KafkaApis(val requestChannel: RequestChannel,
           }
         } else responsePartitionData
 
-      val mergedPartitionData = convertedPartitionData ++ unauthorizedForReadPartitionData ++ nonExistingOrUnauthorizedForDescribePartitionData
+      val convertedAndPayloadAppendedPartitionData = convertedPartitionData.map{case (topicAndPartition, fetchResponsePartitionData) =>
+        (
+            topicAndPartition,
+            new FetchResponsePartitionData(
+              fetchResponsePartitionData.error,
+              fetchResponsePartitionData.hw,
+              fetchResponsePartitionData.messages.asInstanceOf[FileMessageSet].toPayloadAppendedMessageFormat()
+            )
+          )
+      }
+
+      val mergedPartitionData = convertedAndPayloadAppendedPartitionData ++ unauthorizedForReadPartitionData ++ nonExistingOrUnauthorizedForDescribePartitionData
 
       mergedPartitionData.foreach { case (topicAndPartition, data) =>
         if (data.error != Errors.NONE.code)
